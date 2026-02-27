@@ -1,0 +1,75 @@
+==========================================
+Question 3B: AE Visualizations Creation
+Start Time: 2026-02-27 00:18:26 
+==========================================
+
+Loading ADaM datasets...
+Datasets loaded:
+  - ADAE: 1191 records
+  - ADSL: 306 subjects
+
+Filtering for treatment-emergent AEs (TRTEMFL='Y')...
+Treatment-emergent AEs: 1122 records
+
+Creating Plot 1: AE Severity Distribution by Treatment...
+Severity summary:
+# A tibble: 9 × 6
+  ACTARM               AESEV    n_subjects     N percentage label        
+  <chr>                <chr>         <int> <int>      <dbl> <chr>        
+1 Placebo              MILD             58    86      67.4  "58\n(67.4%)"
+2 Placebo              MODERATE         25    86      29.1  "25\n(29.1%)"
+3 Placebo              SEVERE            5    86       5.81 "5\n(5.8%)"  
+4 Xanomeline High Dose MILD             64    72      88.9  "64\n(88.9%)"
+5 Xanomeline High Dose MODERATE         46    72      63.9  "46\n(63.9%)"
+6 Xanomeline High Dose SEVERE            8    72      11.1  "8\n(11.1%)" 
+7 Xanomeline Low Dose  MILD             64    96      66.7  "64\n(66.7%)"
+8 Xanomeline Low Dose  MODERATE         58    96      60.4  "58\n(60.4%)"
+9 Xanomeline Low Dose  SEVERE           16    96      16.7  "16\n(16.7%)"
+
+Saving Plot 1 to PNG...
+Plot 1 saved successfully
+
+Creating Plot 2: Top 10 Most Frequent AEs with 95% CI...
+Total subjects in study: 306 
+Top 10 AEs summary:
+# A tibble: 10 × 7
+   AETERM              n_subjects incidence_rate      p     se ci_lower ci_upper
+   <fct>                    <int>          <dbl>  <dbl>  <dbl>    <dbl>    <dbl>
+ 1 PRURITUS                    54          17.6  0.176  0.0218    13.4     21.9 
+ 2 APPLICATION SITE P…         50          16.3  0.163  0.0211    12.2     20.5 
+ 3 ERYTHEMA                    36          11.8  0.118  0.0184     8.15    15.4 
+ 4 APPLICATION SITE E…         30           9.80 0.0980 0.0170     6.47    13.1 
+ 5 RASH                        26           8.50 0.0850 0.0159     5.37    11.6 
+ 6 APPLICATION SITE D…         21           6.86 0.0686 0.0145     4.03     9.70
+ 7 APPLICATION SITE I…         21           6.86 0.0686 0.0145     4.03     9.70
+ 8 DIZZINESS                   21           6.86 0.0686 0.0145     4.03     9.70
+ 9 DIARRHOEA                   17           5.56 0.0556 0.0131     2.99     8.12
+10 SINUS BRADYCARDIA           17           5.56 0.0556 0.0131     2.99     8.12
+
+Saving Plot 2 to PNG...
+Plot 2 saved successfully
+
+==========================================
+Visualization Summary Statistics
+==========================================
+
+Plot 1 - Severity Distribution:
+  Total unique subjects with AEs by severity:
+# A tibble: 3 × 2
+  AESEV        n
+  <chr>    <int>
+1 MILD       186
+2 MODERATE   129
+3 SEVERE      29
+
+Plot 2 - Top 10 AEs:
+  Incidence rate range: 5.6 % to 17.6 %
+  Total subjects with any of top 10 AEs: 165 
+
+==========================================
+Question 3B Completed Successfully!
+End Time: 2026-02-27 00:18:28 
+Outputs saved:
+  - question_3_tlg/plot1_ae_severity.png
+  - question_3_tlg/plot2_top10_aes.png
+==========================================

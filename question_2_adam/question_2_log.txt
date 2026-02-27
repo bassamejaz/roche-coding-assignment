@@ -1,0 +1,70 @@
+==========================================
+Question 2: ADaM ADSL Creation
+Start Time: 2026-02-27 00:18:20 
+==========================================
+
+Loading SDTM datasets...
+Datasets loaded:
+  - DM: 306 records
+  - VS: 29643 records
+  - EX: 591 records
+  - DS: 850 records
+  - AE: 1191 records
+
+Creating ADSL from DM domain...
+Base ADSL created with 306 subjects
+
+Deriving age grouping variables (AGEGR9, AGEGR9N)...
+Age grouping frequencies:
+
+    >50 18 - 50 
+    305       1 
+
+Deriving treatment start date-time (TRTSDTM, TRTSTMF)...
+Treatment start dates derived for 254 subjects
+
+Deriving ITT flag (ITTFL)...
+ITTFL frequencies:
+
+  Y 
+306 
+
+Deriving last known alive date (LSTAVLDT)...
+Last alive date derived for 306 subjects
+
+Finalizing ADSL dataset...
+
+==========================================
+ADSL Creation Summary
+==========================================
+Total subjects: 306 
+ITT population (ITTFL='Y'): 306 
+
+Age Group Distribution:
+         
+          Placebo Screen Failure Xanomeline High Dose Xanomeline Low Dose
+  >50          86             51                   84                  84
+  18 - 50       0              1                    0                   0
+
+Key Variables Summary:
+  - TRTSDTM populated: 254 subjects
+  - TRTSTMF populated: 254 subjects
+  - LSTAVLDT populated: 306 subjects
+
+First 5 records:
+# A tibble: 5 × 6
+  USUBJID       AGE AGEGR9 TRTSDTM             ITTFL LSTAVLDT  
+  <chr>       <dbl> <chr>  <dttm>              <chr> <date>    
+1 01-701-1015    63 >50    2014-01-02 00:00:00 Y     2014-07-02
+2 01-701-1023    64 >50    2012-08-05 00:00:00 Y     2013-02-18
+3 01-701-1028    71 >50    2013-07-19 00:00:00 Y     2014-01-14
+4 01-701-1033    74 >50    2014-03-18 00:00:00 Y     2014-09-15
+5 01-701-1034    77 >50    2014-07-01 00:00:00 Y     2014-12-30
+
+Saving ADSL dataset to CSV...
+
+==========================================
+Question 2 Completed Successfully!
+End Time: 2026-02-27 00:18:20 
+Output saved to: question_2_adam/adsl_output.csv
+==========================================

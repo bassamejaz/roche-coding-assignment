@@ -35,39 +35,12 @@ cat("Raw data structure:\n")
 str(ds_raw)
 cat("\n")
 
-# Create study controlled terminology as per specifications
-cat("Creating study controlled terminology...\n")
-study_ct <- data.frame(
-  stringsAsFactors = FALSE,
-  codelist_code = c("C66727", "C66727", "C66727", "C66727", "C66727",
-                    "C66727", "C66727", "C66727", "C66727", "C66727"),
-  term_code = c("C41331", "C25250", "C28554", "C48226", "C48227",
-                "C48250", "C142185", "C49628", "C49632", "C49634"),
-  term_value = c("ADVERSE EVENT", "COMPLETED", "DEATH", "LACK OF EFFICACY",
-                 "LOST TO FOLLOW-UP", "PHYSICIAN DECISION", "PROTOCOL VIOLATION",
-                 "SCREEN FAILURE", "STUDY TERMINATED BY SPONSOR",
-                 "WITHDRAWAL BY SUBJECT"),
-  collected_value = c("Adverse Event", "Complete", "Dead", "Lack of Efficacy",
-                      "Lost To Follow-Up", "Physician Decision", "Protocol Violation",
-                      "Trial Screen Failure", "Study Terminated By Sponsor",
-                      "Withdrawal by Subject"),
-  term_preferred_term = c("AE", "Completed", "Died", NA, NA, NA, "Violation",
-                          "Failure to Meet Inclusion/Exclusion Criteria", NA, "Dropout"),
-  term_synonyms = c("ADVERSE EVENT", "COMPLETE", "Death", NA, NA, NA, NA, NA, NA,
-                    "Discontinued Participation")
-)
-cat("Controlled terminology created with", nrow(study_ct), "terms\n\n")
-
-# Create a controlled terminology object for condition_add
-cat("Creating controlled terminology object for sdtm.oak...\n")
-ct_spec_vars <- sdtm.oak::ct_spec_vars(
-  codelist_code = "codelist_code",
-  term_code = "term_code",
-  term_value = "term_value",
-  collected_value = "collected_value",
-  term_preferred_term = "term_preferred_term",
-  term_synonyms = "term_synonyms"
-)
+# Load controlled terminology from CSV file
+cat("Loading controlled terminology from CSV...\n")
+study_ct <- read.csv("sdtm_ct.csv", stringsAsFactors = FALSE)
+cat("Controlled terminology loaded with", nrow(study_ct), "terms\n")
+cat("Disposition codelist (C66727) contains",
+    nrow(study_ct[study_ct$codelist_code == "C66727", ]), "terms\n\n")
 
 # Define domain key for DS
 cat("Defining domain key...\n")
@@ -77,57 +50,63 @@ ds_domain_key <- c("STUDYID", "USUBJID", "DSSEQ")
 # Map raw variables to SDTM variables
 cat("Creating DS domain...\n\n")
 
-# Step 1: Start with basic SDTM structure
+# Step 1: Start with basic SDTM structure and create ISO8601 dates
+cat("Step 1: Creating ISO8601 formatted dates...\n")
+
+# Create basic DS structure with ISO8601 dates
 ds <- ds_raw %>%
-  # Create DOMAIN variable
-  derive_domain(domain = "DS") %>%
-  # Create sequence number
-  create_iso8601(
-    raw_dat = .,
-    raw_var = DSSTDAT,
-    tgt_var = "DSSTDTC"
-  ) %>%
-  create_iso8601(
-    raw_dat = .,
-    raw_var = DSDAT,
-    tgt_var = "DSDTC"
+  mutate(
+    # Map raw columns to SDTM columns
+    STUDYID = STUDY,
+    USUBJID = PATNUM,
+    DSTERM = coalesce(IT.DSTERM, OTHERSP),  # Use IT.DSTERM or OTHERSP if missing
+    DSCAT = FORML,
+    VISIT = INSTANCE,
+    VISITNUM = case_when(
+      INSTANCE == "Baseline" ~ 1,
+      INSTANCE == "Week 2" ~ 2,
+      INSTANCE == "Week 4" ~ 3,
+      INSTANCE == "Week 6" ~ 4,
+      INSTANCE == "Week 8" ~ 5,
+      INSTANCE == "Week 12" ~ 6,
+      INSTANCE == "Week 16" ~ 7,
+      INSTANCE == "Week 20" ~ 8,
+      INSTANCE == "Week 24" ~ 9,
+      INSTANCE == "Week 26" ~ 10,
+      TRUE ~ as.numeric(NA)
+    ),
+    # Convert dates to ISO8601 format (dates are in dd-mm-yyyy format)
+    # create_iso8601 handles NA values automatically
+    DSSTDTC = as.character(create_iso8601(IT.DSSTDAT, .format = "dd-mm-yyyy")),
+    DSDTC = as.character(create_iso8601(DSDTCOL, .format = "dd-mm-yyyy"))
   )
 
-# Step 2: Add controlled terminology mapping using condition_add
-ds <- ds %>%
-  condition_add(
-    ct_spec = study_ct,
-    ct_spec_vars = ct_spec_vars,
-    raw_dat = .,
-    raw_var = DSTERM,
-    tgt_var = "DSDECOD"
-  )
+cat("ISO8601 dates created successfully.\n")
 
-# Step 3: Create additional variables and standardize
+# Step 2: Add controlled terminology mapping and finalize variables
+cat("Step 2: Applying controlled terminology mapping...\n")
 ds <- ds %>%
   mutate(
-    STUDYID = if_else(is.na(STUDYID), "CDISCPILOT01", STUDYID),
+    # Apply controlled terminology to get DSDECOD
+    DSDECOD = ct_map(
+      x = DSTERM,
+      ct_spec = study_ct,
+      ct_clst = "C66727"  # Codelist for disposition terms
+    ),
+    # Add DOMAIN
     DOMAIN = "DS",
-    # DSTERM is already in raw data
-    DSTERM = DSTERM,
-    # DSDECOD from controlled terminology
-    DSDECOD = if_else(is.na(DSDECOD), toupper(DSTERM), DSDECOD),
-    # DSCAT from raw data
-    DSCAT = DSCAT,
-    # Visit information
-    VISITNUM = VISITNUM,
-    VISIT = VISIT,
-    # Dates already created with create_iso8601
-    # DSDTC and DSSTDTC already created
-    # Calculate study day
-    DSSTDY = NA_integer_  # Would need reference date for actual calculation
+    # Calculate study day (would need reference date for actual calculation)
+    DSSTDY = NA_integer_
   ) %>%
   # Create sequence number
   group_by(STUDYID, USUBJID) %>%
   mutate(DSSEQ = row_number()) %>%
   ungroup()
 
-# Step 4: Select and order final variables
+cat("Controlled terminology applied and variables finalized.\n")
+
+# Step 3: Select and order final variables
+cat("Step 3: Selecting and ordering final SDTM variables...\n")
 ds_final <- ds %>%
   select(
     STUDYID,

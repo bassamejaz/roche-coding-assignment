@@ -217,7 +217,7 @@ adsl <- adsl %>%
 
 # Handle Inf values (when all dates are NA)
 adsl <- adsl %>%
-  mutate(LSTAVLDT = if_else(is.infinite(LSTAVLDT), NA_real_, LSTAVLDT))
+  mutate(LSTAVLDT = if_else(is.infinite(LSTAVLDT), as.Date(NA), LSTAVLDT))
 
 cat("Last alive date derived for", sum(!is.na(adsl$LSTAVLDT)), "subjects\n\n")
 

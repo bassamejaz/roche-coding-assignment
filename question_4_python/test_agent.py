@@ -73,11 +73,11 @@ def main():
     print("\nThis script tests the GenAI assistant with 3 natural language queries")
     print("demonstrating its ability to understand clinical data questions.\n")
 
-    # Check for API key
-    if not os.getenv("OPENAI_API_KEY"):
-        print("⚠️  Warning: OPENAI_API_KEY not found in environment variables.")
-        print("   Please set it using: export OPENAI_API_KEY='your-key-here'")
-        print("   Or create a .env file in question_4_python/")
+    # Check for API credentials
+    if not os.getenv("BEDROCK_PORTKEY_API_KEY") or not os.getenv("PORTKEY_URL"):
+        print("⚠️  Warning: API credentials not found in environment variables.")
+        print("   Required variables: BEDROCK_PORTKEY_API_KEY, PORTKEY_URL")
+        print("   Please ensure .env file exists in question_4_python/")
         sys.exit(1)
 
     # Initialize agent

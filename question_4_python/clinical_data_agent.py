@@ -15,10 +15,12 @@ import pandas as pd
 import os
 from typing import Dict, List, Optional
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.output_parsers import ResponseSchema, StructuredOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 import json
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class ClinicalTrialDataAgent:
     """
@@ -43,15 +45,15 @@ class ClinicalTrialDataAgent:
 
         # Initialize LLM
         self.llm = ChatOpenAI(
-            model="gpt-4o-mini",
+            model="us.anthropic.claude-sonnet-4-20250514-v1:0",
+            api_key=os.getenv("BEDROCK_PORTKEY_API_KEY"),
+            base_url=os.getenv("PORTKEY_URL"),
             temperature=0
         )
 
         # Define schema information for the LLM
         self.schema_description = self._build_schema_description()
 
-        # Set up output parser
-        self.output_parser = self._setup_output_parser()
 
     def _build_schema_description(self) -> str:
         """
@@ -120,30 +122,6 @@ IMPORTANT RULES:
 """
         return schema_desc
 
-    def _setup_output_parser(self) -> StructuredOutputParser:
-        """
-        Set up the structured output parser for LLM responses.
-        """
-        response_schemas = [
-            ResponseSchema(
-                name="target_column",
-                description="The column name to filter on (e.g., AESEV, AETERM, AESOC, ACTARM)"
-            ),
-            ResponseSchema(
-                name="filter_value",
-                description="The value to search for in the target column (exact match or contains)"
-            ),
-            ResponseSchema(
-                name="filter_type",
-                description="Type of filter: 'exact' for exact match or 'contains' for partial match"
-            ),
-            ResponseSchema(
-                name="additional_filters",
-                description="JSON object of any additional filters needed (e.g., {'TRTEMFL': 'Y'})"
-            )
-        ]
-        return StructuredOutputParser.from_response_schemas(response_schemas)
-
     def parse_question(self, question: str) -> Dict:
         """
         Parse a natural language question into a structured query.
@@ -154,9 +132,6 @@ IMPORTANT RULES:
         Returns:
             Dictionary with target_column, filter_value, and other query params
         """
-        # Create prompt template
-        format_instructions = self.output_parser.get_format_instructions()
-
         prompt = ChatPromptTemplate.from_template(
             template="""You are an expert clinical data analyst. Given a natural language question
 about adverse events in a clinical trial, extract the query parameters needed to filter the dataset.
@@ -168,30 +143,65 @@ Question: {question}
 Analyze the question and determine:
 1. Which column should be filtered (target_column)
 2. What value to search for (filter_value)
-3. Whether to use exact match or contains (filter_type)
-4. Any additional filters needed (additional_filters)
+3. Whether to use exact match or contains (filter_type: "exact" or "contains")
+4. Any additional filters needed (additional_filters as a dict, e.g., {{"TRTEMFL": "Y"}})
 
-{format_instructions}
+Return ONLY a valid JSON object with these four fields. Example:
+{{"target_column": "AESEV", "filter_value": "MODERATE", "filter_type": "exact", "additional_filters": {{"TRTEMFL": "Y"}}}}
 
-Return the structured output:""",
+JSON response:""",
             partial_variables={
-                "format_instructions": format_instructions,
                 "schema_description": self.schema_description
             }
         )
 
         # Create chain and invoke
-        chain = prompt | self.llm | self.output_parser
-        result = chain.invoke({"question": question})
+        chain = prompt | self.llm | StrOutputParser()
+        response = chain.invoke({"question": question})
 
-        # Parse additional_filters if it's a string
-        if isinstance(result.get('additional_filters'), str):
-            try:
-                result['additional_filters'] = json.loads(result['additional_filters'])
-            except:
+        # Parse JSON response
+        try:
+            # Clean up response (remove markdown code blocks if present)
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            if response.startswith("```"):
+                response = response[3:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
+            result = json.loads(response)
+
+            # Ensure all required fields exist
+            if 'target_column' not in result:
+                result['target_column'] = 'AETERM'
+            if 'filter_value' not in result:
+                result['filter_value'] = ''
+            if 'filter_type' not in result:
+                result['filter_type'] = 'contains'
+            if 'additional_filters' not in result:
                 result['additional_filters'] = {}
 
-        return result
+            # Parse additional_filters if it's a string
+            if isinstance(result.get('additional_filters'), str):
+                try:
+                    result['additional_filters'] = json.loads(result['additional_filters'])
+                except:
+                    result['additional_filters'] = {}
+
+            return result
+
+        except json.JSONDecodeError as e:
+            print(f"Warning: Failed to parse LLM response as JSON: {e}")
+            print(f"Response was: {response}")
+            # Return default values
+            return {
+                "target_column": "AETERM",
+                "filter_value": question,
+                "filter_type": "contains",
+                "additional_filters": {}
+            }
 
     def execute_query(self, query_params: Dict) -> Dict:
         """

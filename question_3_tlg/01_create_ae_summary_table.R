@@ -74,11 +74,23 @@ cat("AE terms found:", nrow(ae_counts), "\n\n")
 # Create gtsummary table
 cat("Creating summary table with gtsummary...\n")
 
-# Prepare data for gtsummary
-ae_for_table <- adae_teae %>%
-  distinct(USUBJID, ACTARM, AETERM)
+# Calculate overall frequency for sorting (by descending frequency as per spec)
+cat("Calculating overall frequencies for sorting...\n")
+ae_freq <- adae_teae %>%
+  distinct(USUBJID, AETERM) %>%
+  group_by(AETERM) %>%
+  summarise(total_n = n(), .groups = "drop") %>%
+  arrange(desc(total_n))
 
-# Create the summary table
+cat("Sorting AE terms by descending frequency...\n")
+
+# Prepare data for gtsummary with sorted AETERM
+ae_for_table <- adae_teae %>%
+  distinct(USUBJID, ACTARM, AETERM) %>%
+  # Reorder AETERM factor by descending frequency
+  mutate(AETERM = factor(AETERM, levels = ae_freq$AETERM))
+
+# Create the summary table (now with sorted rows)
 ae_table <- ae_for_table %>%
   tbl_summary(
     by = ACTARM,
@@ -86,20 +98,16 @@ ae_table <- ae_for_table %>%
     label = list(AETERM ~ "Adverse Event Term"),
     statistic = all_categorical() ~ "{n} ({p}%)",
     digits = all_categorical() ~ c(0, 1),
-    missing = "no"
+    missing = "no",
+    sort = list(all_categorical() ~ "frequency")
   ) %>%
   add_overall(last = TRUE) %>%
   modify_header(
     label = "**Adverse Event**",
     all_stat_cols() ~ "**{level}**\nN = {n}"
   ) %>%
-  modify_caption("**Treatment-Emergent Adverse Events Summary**") %>%
-  bold_labels() %>%
-  # Sort by total frequency (descending)
-  sort_table_by(
-    stat = "p.overall",
-    decrease = TRUE
-  )
+  modify_caption("**Treatment-Emergent Adverse Events Summary (sorted by descending frequency)**") %>%
+  bold_labels()
 
 # Display table to console
 cat("Summary table created successfully\n\n")
@@ -113,8 +121,21 @@ ae_table %>%
 
 # Alternative: Create a more detailed table by SOC
 cat("\nCreating alternative summary by System Organ Class...\n")
+
+# Calculate frequencies for SOC and AETERM sorting
+soc_freq <- adae_teae %>%
+  distinct(USUBJID, AESOC) %>%
+  group_by(AESOC) %>%
+  summarise(total_n = n(), .groups = "drop") %>%
+  arrange(desc(total_n))
+
 ae_soc_table <- adae_teae %>%
   distinct(USUBJID, ACTARM, AESOC, AETERM) %>%
+  # Sort SOC and AETERM by descending frequency
+  mutate(
+    AESOC = factor(AESOC, levels = soc_freq$AESOC),
+    AETERM = factor(AETERM, levels = ae_freq$AETERM)
+  ) %>%
   # Create nested variable
   mutate(AE_DISPLAY = paste0("  ", AETERM)) %>%
   tbl_summary(
@@ -126,14 +147,15 @@ ae_soc_table <- adae_teae %>%
     ),
     statistic = all_categorical() ~ "{n} ({p}%)",
     digits = all_categorical() ~ c(0, 1),
-    missing = "no"
+    missing = "no",
+    sort = list(all_categorical() ~ "frequency")
   ) %>%
   add_overall(last = TRUE) %>%
   modify_header(
     label = "**Adverse Event**",
     all_stat_cols() ~ "**{level}**\nN = {n}"
   ) %>%
-  modify_caption("**Treatment-Emergent Adverse Events by System Organ Class**") %>%
+  modify_caption("**Treatment-Emergent Adverse Events by System Organ Class (sorted by descending frequency)**") %>%
   bold_labels()
 
 print(ae_soc_table)
